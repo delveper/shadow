@@ -1,7 +1,9 @@
 # Environment variables
 .env
+
 # IDE files
 .idea
+
 # Temp files
 tmp
 
@@ -20,10 +22,7 @@ tmp
 # Dependency directories (remove the comment below to include it)
 # vendor/
 
-# IDE files
-.idea
-
-# Log files
+ Log files
 log.*
 *.log
 
