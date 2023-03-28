@@ -22,16 +22,20 @@ func Run() error {
 
 	bot := app.NewBot()
 
-	offset := 0
+	var offset int
+
 	for {
 		updates, err := bot.PullUpdates(offset)
+
 		if err != nil {
 			log.Println(err)
 			continue
 		}
 
 		for _, update := range updates {
-			offset = update.ID + 1
+			if update.ID <= offset {
+				continue
+			}
 
 			if update.Message == nil {
 				continue
@@ -42,6 +46,8 @@ func Run() error {
 					log.Println(err)
 				}
 			}
+
+			offset = update.ID
 		}
 
 		time.Sleep(1 * time.Second)

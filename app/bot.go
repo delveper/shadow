@@ -3,6 +3,7 @@ package app
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -35,6 +36,8 @@ func (b *Bot) PullUpdates(offset int) ([]Update, error) {
 
 	u.RawPath = v.Encode()
 
+	log.Println(u.String())
+
 	resp, err := b.Client.Get(u.String())
 	if err != nil {
 		return nil, fmt.Errorf("getting updates from request: %w", err)
@@ -42,13 +45,15 @@ func (b *Bot) PullUpdates(offset int) ([]Update, error) {
 
 	defer resp.Body.Close()
 
-	var updates []Update
+	var updates struct {
+		Result []Update `json:"result"`
+	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&updates); err != nil {
 		return nil, fmt.Errorf("getting decoding updates: %w", err)
 	}
 
-	return updates, nil
+	return updates.Result, nil
 }
 
 func (b *Bot) SendMessage(chatID int, text string) error {
