@@ -1,14 +1,39 @@
 package app
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"strconv"
 )
+
+const ( // https://api.telegram.org/bot<token>/<method>?key1={val1}&key2{val2}
+	MethodGetMe         = "getMe"
+	MethodGetUpdates    = "getUpdates"
+	MethodDeleteWebhook = "deleteWebhook" //
+	MethodSetWebhook    = "setWebhook"    // ?url={your_API_server_url}
+	MethodSendMessage   = "sendMessage"   // ?chat_id={chat_id}&text={text}
+)
+
+type Endpoint struct {
+	URL    *url.URL
+	Values url.Values
+}
+
+func (e *Endpoint) BuildURL(method string, args ...string) *url.URL {
+	for i := 0; i < len(args); i += 2 {
+		k, v := args[i], args[i+1]
+		e.Values.Add(k, v)
+	}
+
+	u := *e.URL.JoinPath(method)
+	u.RawQuery = e.Values.Encode()
+
+	return &u
+}
 
 type Bot struct {
 	Client   *http.Client
@@ -16,27 +41,23 @@ type Bot struct {
 }
 
 func NewBot() *Bot {
-	token := os.Getenv("TELEGRAM_TOKEN")
-	endpoint := NewEndpoint(token)
-
-	client := new(http.Client)
+	e := Endpoint{
+		URL: &url.URL{
+			Scheme: "https",
+			Host:   "api.telegram.org",
+			Path:   "bot" + os.Getenv("TELEGRAM_TOKEN"),
+		},
+		Values: url.Values{},
+	}
 
 	return &Bot{
-		Client:   client,
-		Endpoint: endpoint,
+		Client:   &http.Client{},
+		Endpoint: &e,
 	}
 }
 
 func (b *Bot) PullUpdates(offset int) ([]Update, error) {
-	u := *b.Endpoint.URL
-	u = *u.JoinPath(MethodGetUpdates)
-
-	v := make(url.Values)
-	v.Add("offset", strconv.Itoa(offset))
-
-	u.RawPath = v.Encode()
-
-	log.Println(u.String())
+	u := b.Endpoint.BuildURL(MethodGetUpdates, "offset", strconv.Itoa(offset))
 
 	resp, err := b.Client.Get(u.String())
 	if err != nil {
@@ -57,26 +78,28 @@ func (b *Bot) PullUpdates(offset int) ([]Update, error) {
 }
 
 func (b *Bot) SendMessage(chatID int, text string) error {
-	text, err := url.QueryUnescape(text)
-	if err != nil {
-		return fmt.Errorf("preparing text: %w", err)
+	msg := SendMessage{
+		ChatID: chatID,
+		Text:   text,
 	}
 
-	u := *b.Endpoint.URL
-	u = *u.JoinPath(MethodSendMessage)
+	var body *bytes.Buffer
+	if err := json.NewEncoder(body).Encode(msg); err != nil {
+		return fmt.Errorf("decoding body: %w", err)
+	}
 
-	v := make(url.Values)
-	v.Add("chat_id", strconv.Itoa(chatID))
-	v.Add("text", text)
+	u := b.Endpoint.BuildURL(MethodSendMessage)
 
-	u.RawQuery = v.Encode()
-
-	resp, err := b.Client.Get(u.String())
+	resp, err := b.Client.Post(u.String(), "application/json", body)
 	if err != nil {
 		return fmt.Errorf("sending message: %w", err)
 	}
 
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected status: %v", resp.Status)
+	}
 
 	return nil
 }
