@@ -3,7 +3,8 @@ package main
 import (
 	"fmt"
 	"log"
-	"time"
+	"net/http"
+	"os"
 
 	"github.com/delveper/env"
 	"github.com/delveper/shadow/app"
@@ -20,37 +21,18 @@ func Run() error {
 		return fmt.Errorf("load envar: %w", err)
 	}
 
-	bot := app.NewBot()
+	host := os.Getenv("HOST")
+	port := os.Getenv("PORT")
+	addr := host + ":" + port
 
-	var offset int
+	bot := app.NewTelegram()
+	webhook := app.NewWebhook(bot)
+	hdl := http.HandlerFunc(webhook.Handle)
 
-	for {
-		updates, err := bot.PullUpdates(offset)
+	log.Printf("Starting server on port: %s\n", port)
 
-		if err != nil {
-			log.Println(err)
-			continue
-		}
-
-		for _, update := range updates {
-			if update.ID <= offset {
-				continue
-			}
-
-			if update.Message == nil {
-				continue
-			}
-
-			if update.Message.Chat != nil {
-				if err := bot.SendMessage(update.Message.Chat.ID, update.Message.Text); err != nil {
-					log.Println(err)
-				}
-			}
-
-			offset = update.ID
-		}
-
-		time.Sleep(1 * time.Second)
+	if err := http.ListenAndServe(addr, hdl); err != nil {
+		return fmt.Errorf("serving: %w", err)
 	}
 
 	return nil
