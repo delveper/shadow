@@ -23,6 +23,12 @@ const ( // https://api.telegram.org/bot<token>/<method>?key1={val1}&key2{val2}
 	MethodSendMessage   = "sendMessage"   // ?chat_id={chat_id}&text={text}
 )
 
+const (
+	FormatHTML       = "HTML"
+	FormatMarkdown   = "Markdown"
+	FormatMarkdownV2 = "MarkdownV2"
+)
+
 // User https://core.telegram.org/bots/api#user
 type User struct {
 	ID           int    `json:"id"`
@@ -63,7 +69,7 @@ type Update struct {
 	Message *Message `json:"message"`
 }
 
-// SendMessage https://core.telegram.org/bots/api#user
+// SendMessage https://core.telegram.org/bots/api#sendmessage
 type SendMessage struct {
 	ChatID    int    `json:"chat_id"`
 	Text      string `json:"text"`
@@ -87,7 +93,7 @@ func NewTelegram() *Telegram {
 
 	endpoint := Endpoint{
 		URL: &url.URL{
-			Scheme: "https",
+			Scheme: DefaultSchema,
 			Host:   apiTelegramHost,
 			Path:   apiTelegramPath + token,
 		},
@@ -122,13 +128,14 @@ func (b *Telegram) GetUpdate(offset int) (*Update, error) {
 
 func (b *Telegram) SendMessage(chatID int, text string) error {
 	msg := SendMessage{
-		ChatID: chatID,
-		Text:   text,
+		ChatID:    chatID,
+		Text:      text,
+		ParseMode: FormatHTML,
 	}
 
 	var body bytes.Buffer
 	if err := json.NewEncoder(&body).Encode(msg); err != nil {
-		return fmt.Errorf("decoding body: %w", err)
+		return fmt.Errorf("decoding request body: %w", err)
 	}
 
 	u := b.Endpoint.BuildURL(MethodSendMessage)

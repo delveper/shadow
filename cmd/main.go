@@ -26,7 +26,9 @@ func Run() error {
 	addr := host + ":" + port
 
 	bot := app.NewTelegram()
-	webhook := app.NewWebhook(bot)
+	gpt := app.NewOpenAI()
+
+	webhook := app.NewWebhook(bot, gpt)
 	hdl := http.HandlerFunc(webhook.Handle)
 
 	log.Printf("Starting server on port: %s\n", port)

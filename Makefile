@@ -21,11 +21,10 @@ ngrok-expose:
 	ngrok http ${PORT}
 
 # telegram
-TELEGRAM_URL := "https://api.telegram.org/bot${TELEGRAM_TOKEN}"
+TELEGRAM_URL := https://api.telegram.org/bot${TELEGRAM_TOKEN}
 
 telegram-webhook:
-	curl -F "url=${PUBLIC_URL}" "${TELEGRAM_URL}/setWebhook"
-
+	curl ${TELEGRAM_URL}/setWebhook?url=${PUBLIC_URL}
 
 # OpenAI
 openai-models:
@@ -36,11 +35,11 @@ openai-models:
 openai-usage:
 	curl -G https://api.openai.com/v1/usage \
          -H "Authorization: Bearer ${OPENAI_TOKEN}" \
-         --data-urlencode "date=$(date +%Y-%m-%d)"
+         --data-urlencode "date=$$(date +%Y-%m-%d)"
 
 openai-completions:
 	curl https://api.openai.com/v1/chat/completions \
-	  -H "Content-Type: application/json" \
-	  -H "Authorization: Bearer  ${OPENAI_TOKEN}" \
-	  -d '{ "model": "gpt-3.5-turbo", "messages": [{"role": "system", "content": "You are a helpful tutor who can help me improve my English. You are kindly fix my errors if there is any and teach some grammar if needed."}, {"role":"user", "content": "Analyze my English: You are a helpful tutor that help me improve English"}] }' \
-	  | jq -r '.choices[0].message.content'
+	-H "Content-Type: application/json" \
+	-H "Authorization: Bearer ${OPENAI_TOKEN}" \
+  	-d '{ "model": "gpt-3.5-turbo", "messages": [{"role": "system", "content": "You are a helpful tutor who can help me improve my English. You can kindly fix my errors if there are any and teach me some grammar if needed."}, {"role":"user", "content": "Analyze my English: You are a helpful tutor that helps me improve my English."}] }' \
+	| jq -r '.choices[0].message.content'

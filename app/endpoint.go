@@ -2,6 +2,8 @@ package app
 
 import "net/url"
 
+const DefaultSchema = "https"
+
 type Endpoint struct {
 	URL    *url.URL
 	Values url.Values
