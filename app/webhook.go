@@ -18,7 +18,7 @@ func NewWebhook(bot *Telegram, gpt *OpenAI) *Webhook {
 	}
 }
 
-func (w *Webhook) Handle(_ http.ResponseWriter, req *http.Request) {
+func (w *Webhook) ServeHTTP(_ http.ResponseWriter, req *http.Request) {
 	var upd Update
 	if err := json.NewDecoder(req.Body).Decode(&upd); err != nil {
 		log.Printf("Could not encode update: %v", err)
@@ -37,7 +37,21 @@ func (w *Webhook) Handle(_ http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	comp, err := w.OpenAI.CreateCompletion(upd.Message.Text)
+	var reply string
+
+	/*	if upd.Message.Voice != nil {
+			_, err := w.OpenAI.CreateTranscription(nil)
+			if err != nil {
+				log.Println(err)
+				return
+			}
+		}
+	*/
+
+	reply = upd.Message.Text
+
+	comp, err := w.OpenAI.CreateCompletion(reply)
+
 	if err != nil {
 		log.Printf("Failed gettitg completion: %v", err)
 		return

@@ -29,11 +29,10 @@ func Run() error {
 	gpt := app.NewOpenAI()
 
 	webhook := app.NewWebhook(bot, gpt)
-	hdl := http.HandlerFunc(webhook.Handle)
 
 	log.Printf("Starting server on port: %s\n", port)
 
-	if err := http.ListenAndServe(addr, hdl); err != nil {
+	if err := http.ListenAndServe(addr, webhook); err != nil {
 		return fmt.Errorf("serving: %w", err)
 	}
 

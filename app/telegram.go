@@ -2,6 +2,7 @@ package app
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -45,8 +46,10 @@ type Chat struct {
 	Type string `json:"type"`
 }
 
+// Audio https://core.telegram.org/bots/api#audio
 type Audio struct {
 	FileID   string `json:"file_id"`
+	FileName string `json:"file_name"`
 	Duration int    `json:"duration"`
 }
 
@@ -76,7 +79,7 @@ type SendMessage struct {
 	ParseMode string `json:"parse_mode,omitempty"`
 }
 
-// SendVoice https://core.telegram.org/bots/api#user
+// SendVoice https://core.telegram.org/bots/api#sendvoice
 type SendVoice struct {
 	ChatID    int    `json:"chat_id"`
 	Voice     *Voice `json:"voice"`
@@ -109,14 +112,15 @@ func NewTelegram() *Telegram {
 func (b *Telegram) GetUpdate(offset int) (*Update, error) {
 	u := b.Endpoint.BuildURL(MethodGetUpdates, "offset", strconv.Itoa(offset))
 
-	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
+	ctx := context.Background()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 
 	resp, err := b.Client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("getting updates from request: %w", err)
 	}
 
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var upd Update
 	if err := json.NewDecoder(resp.Body).Decode(&upd); err != nil {
@@ -140,7 +144,8 @@ func (b *Telegram) SendMessage(chatID int, text string) error {
 
 	u := b.Endpoint.BuildURL(MethodSendMessage)
 
-	req, err := http.NewRequest(http.MethodPost, u.String(), &body)
+	ctx := context.Background()
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u.String(), &body)
 	if err != nil {
 		return fmt.Errorf("building request message: %w", err)
 	}
@@ -152,7 +157,7 @@ func (b *Telegram) SendMessage(chatID int, text string) error {
 		return fmt.Errorf("sending message: %w", err)
 	}
 
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("unexpected status: %v", resp.Status)
