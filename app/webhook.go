@@ -37,30 +37,31 @@ func (w *Webhook) ServeHTTP(_ http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var reply string
+	if upd.Message.Voice != nil {
+		log.Printf("Voice message: %+v\n", upd.Message.Voice.FileID)
+		/*		_, err := w.OpenAI.CreateTranscription(nil)
+				if err != nil {
+					log.Println(err)
+					return
+				}
+		*/
+	}
 
-	/*	if upd.Message.Voice != nil {
-			_, err := w.OpenAI.CreateTranscription(nil)
-			if err != nil {
-				log.Println(err)
-				return
-			}
+	/*
+		reply = upd.Message.Text
+
+		comp, err := w.OpenAI.CreateCompletion(reply)
+
+		if err != nil {
+			log.Printf("Failed gettitg completion: %v", err)
+			return
 		}
+
+		if err := w.Telegram.SendMessage(upd.Message.Chat.ID, comp.Choices[0].Message.Content); err != nil {
+			log.Printf("Failed sending reply: %v", err)
+			return
+		}
+
+		log.Println("Reply sent")
 	*/
-
-	reply = upd.Message.Text
-
-	comp, err := w.OpenAI.CreateCompletion(reply)
-
-	if err != nil {
-		log.Printf("Failed gettitg completion: %v", err)
-		return
-	}
-
-	if err := w.Telegram.SendMessage(upd.Message.Chat.ID, comp.Choices[0].Message.Content); err != nil {
-		log.Printf("Failed sending reply: %v", err)
-		return
-	}
-
-	log.Println("Reply sent")
 }

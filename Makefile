@@ -21,10 +21,14 @@ ngrok-expose:
 	ngrok http ${PORT}
 
 # telegram
-TELEGRAM_URL := https://api.telegram.org/bot${TELEGRAM_TOKEN}
+TELEGRAM_URL := https://api.telegram.org
+FILE_ID := AwACAgIAAxkBAAIB12Qw0IhsBC4ZfGPAqWSzLUG07eSnAAIQKQACaaCISc6XGNKAfPMvLwQ
+telegram-setWebhook:
+	curl ${TELEGRAM_URL}/bot${TELEGRAM_TOKEN}/setWebhook?url=${PUBLIC_URL}
 
-telegram-webhook:
-	curl ${TELEGRAM_URL}/setWebhook?url=${PUBLIC_URL}
+telegram-getFile:
+	curl ${TELEGRAM_URL}/file/bot${TELEGRAM_TOKEN}/getFile?file_id=${FILE_ID} \
+	| jq -r '.result.file_path' \
 
 # OpenAI
 openai-models:

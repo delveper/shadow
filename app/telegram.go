@@ -5,9 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"strconv"
 )
 
@@ -19,6 +21,7 @@ const (
 const ( // https://api.telegram.org/bot<token>/<method>?key1={val1}&key2{val2}
 	MethodGetMe         = "getMe"
 	MethodGetUpdates    = "getUpdates"
+	MethodGetFile       = "getFile"
 	MethodDeleteWebhook = "deleteWebhook" //
 	MethodSetWebhook    = "setWebhook"    // ?url={your_API_server_url}
 	MethodSendMessage   = "sendMessage"   // ?chat_id={chat_id}&text={text}
@@ -55,14 +58,22 @@ type Audio struct {
 
 type Voice Audio
 
+// File https://core.telegram.org/bots/api#file
+type File struct {
+	FileID       string `json:"file_id"`
+	FileUniqueID string `json:"file_unique_id,omitempty"`
+	FilePath     string `json:"file_path"`
+	FileSize     int    `json:"file_size,omitempty"`
+}
+
 // Message https://core.telegram.org/bots/api#message
 type Message struct {
 	ID    int    `json:"message_id"`
 	Text  string `json:"text,omitempty"`
-	From  *User  `json:"from,omitempty"`
-	Chat  *Chat  `json:"chat,omitempty"`
-	Audio *Audio `json:"audio"`
-	Voice *Voice `json:"voice"`
+	From  *User  `json:"from"`
+	Chat  *Chat  `json:"chat"`
+	Audio *Audio `json:"audio,omitempty"`
+	Voice *Voice `json:"voice,omitempty"`
 	Date  int    `json:"date"`
 }
 
@@ -113,7 +124,11 @@ func (b *Telegram) GetUpdate(offset int) (*Update, error) {
 	u := b.Endpoint.BuildURL(MethodGetUpdates, "offset", strconv.Itoa(offset))
 
 	ctx := context.Background()
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("building request update: %w", err)
+	}
 
 	resp, err := b.Client.Do(req)
 	if err != nil {
@@ -145,6 +160,7 @@ func (b *Telegram) SendMessage(chatID int, text string) error {
 	u := b.Endpoint.BuildURL(MethodSendMessage)
 
 	ctx := context.Background()
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u.String(), &body)
 	if err != nil {
 		return fmt.Errorf("building request message: %w", err)
@@ -164,4 +180,60 @@ func (b *Telegram) SendMessage(chatID int, text string) error {
 	}
 
 	return nil
+}
+
+func (b *Telegram) GetFileData(id string) (*File, error) {
+	b.Endpoint.URL.Path = path.Join("file", b.Endpoint.URL.Path)
+	u := b.Endpoint.BuildURL(MethodGetFile, "file_id", id)
+
+	ctx := context.Background()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("building request file: %w", err)
+	}
+
+	resp, err := b.Client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("getting file from request: %w", err)
+	}
+
+	defer func() { _ = resp.Body.Close() }()
+
+	var file File
+	if err := json.NewDecoder(resp.Body).Decode(&file); err != nil {
+		return nil, fmt.Errorf("decoding file: %w", err)
+	}
+
+	return &file, nil
+}
+
+func (b *Telegram) DownloadFile(file *File) ([]byte, error) {
+	b.Endpoint.URL.Path = path.Join("file", b.Endpoint.URL.Path)
+	u := b.Endpoint.BuildURL(MethodGetFile, "file_path", file.FilePath)
+
+	ctx := context.Background()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("building request file: %w", err)
+	}
+
+	resp, err := b.Client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("getting file from request: %w", err)
+	}
+
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status: %v", resp.Status)
+	}
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("reading body: %w", err)
+	}
+
+	return data, nil
 }
