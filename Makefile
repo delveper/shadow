@@ -7,17 +7,17 @@ run:
 # ngrok
 PUBLIC_URL := $(shell curl -s localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url')
 
-ngrok-install:
+server-install:
 	curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc \
 	| sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null \
 	&& echo "deb https://ngrok-agent.s3.amazonaws.com buster main" \
 	| sudo tee /etc/apt/sources.list.d/ngrok.list \
 	&& sudo apt update && sudo apt install ngrok
 
-ngrok-config:
+server-config:
 	ngrok config add-authtoken ${NGROK_TOKEN}
 
-ngrok-expose:
+server-expose:
 	ngrok http ${PORT}
 
 # telegram
@@ -31,6 +31,8 @@ telegram-getFile:
 	| jq -r '.result.file_path' \
 
 # OpenAI
+FILE_NAME := output.mp3
+
 openai-models:
 	curl -G https://api.openai.com/v1/models \
     -H "Authorization: Bearer ${OPENAI_TOKEN}" \
@@ -47,3 +49,11 @@ openai-completions:
 	-H "Authorization: Bearer ${OPENAI_TOKEN}" \
   	-d '{ "model": "gpt-3.5-turbo", "messages": [{"role": "system", "content": "You are a helpful tutor who can help me improve my English. You can kindly fix my errors if there are any and teach me some grammar if needed."}, {"role":"user", "content": "Analyze my English: You are a helpful tutor that helps me improve my English."}] }' \
 	| jq -r '.choices[0].message.content'
+
+openai-transcription:
+	curl https://api.openai.com/v1/audio/transcriptions \
+      -H "Authorization: Bearer  ${OPENAI_TOKEN}" \
+      -H "Content-Type: multipart/form-data" \
+      -F file="@${FILE_NAME}" \
+      -F model="whisper-1" \
+      | jq -r '.text'
