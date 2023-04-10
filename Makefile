@@ -1,6 +1,10 @@
 include .env
 export
 
+install-deps:
+	sudo apt-get install -y jq \
+	sudo apt-get install -y ffmpeg
+
 run:
 	go run ./cmd/main.go
 

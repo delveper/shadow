@@ -42,12 +42,6 @@ const (
 	RoleAssistant = "assistant"
 )
 
-const (
-	TaskTutor        = "You are a helpful assistant who can help me improve my English. Fix grammar, give possible guidelines to improve clarity."
-	TaskAccent       = "Render your response using: https://core.telegram.org/bots/api#html-style (do not mention it in response). TEXT TO ANALYZE: "
-	TaskTranscriptor = "Worth noting that speech is produced by foreigner who is learning English."
-)
-
 type ChatMessage struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
@@ -136,8 +130,9 @@ func NewOpenAI() *OpenAI {
 }
 
 func newCompletionChatRequest(promt, text string) *ChatCompletionRequest {
+	accent := os.Getenv("PROMT_TUTOR_ACCENT")
 	task := ChatMessage{Role: RoleAssistant, Content: promt}
-	cont := ChatMessage{Role: RoleUser, Content: TaskAccent + text}
+	cont := ChatMessage{Role: RoleUser, Content: accent + text}
 
 	return &ChatCompletionRequest{
 		Model:    ModelGPT,
@@ -146,7 +141,8 @@ func newCompletionChatRequest(promt, text string) *ChatCompletionRequest {
 }
 
 func (o *OpenAI) CreateCompletion(text string) (*ChatCompletionResponse, error) {
-	task := newCompletionChatRequest(text, TaskTutor)
+	promt := os.Getenv("PROMT_TUTOR")
+	task := newCompletionChatRequest(text, promt)
 
 	var body bytes.Buffer
 	if err := json.NewEncoder(&body).Encode(task); err != nil {
@@ -187,7 +183,7 @@ func newTranscriptionRequest(file *os.File) *TranscriptionRequest {
 	return &TranscriptionRequest{
 		File:     file.Name(),
 		Model:    ModelWhisper,
-		Promt:    TaskTranscriptor,
+		Promt:    os.Getenv("PROMT_TRANSCRIPTION"),
 		Language: DefaultLanguage,
 		file:     file,
 	}
