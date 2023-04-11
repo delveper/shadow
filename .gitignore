@@ -30,3 +30,9 @@ log.*
 
 # Certificates
 *.pem
+
+# Audio files
+*.oga
+*.ogg
+*.mp3
+*.wav

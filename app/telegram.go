@@ -182,7 +182,24 @@ func (b *Telegram) SendMessage(chatID int, text string) error {
 	return nil
 }
 
-func (b *Telegram) GetFileData(id string) (*File, error) {
+func (b *Telegram) GetVoice(id string) ([]byte, error) {
+	file, err := b.getFileData(id)
+	if err != nil {
+		return nil, fmt.Errorf("getting file data: %w", err)
+	}
+
+	audio, err := b.downloadFile(file)
+	if err != nil {
+		return nil, fmt.Errorf("getting file: %w", err)
+	}
+	if audio == nil {
+		return nil, fmt.Errorf("empty stream")
+	}
+
+	return nil, nil
+}
+
+func (b *Telegram) getFileData(id string) (*File, error) {
 	b.Endpoint.URL.Path = path.Join("file", b.Endpoint.URL.Path)
 	u := b.Endpoint.BuildURL(MethodGetFile, "file_id", id)
 
@@ -208,7 +225,7 @@ func (b *Telegram) GetFileData(id string) (*File, error) {
 	return &file, nil
 }
 
-func (b *Telegram) DownloadFile(file *File) ([]byte, error) {
+func (b *Telegram) downloadFile(file *File) ([]byte, error) {
 	b.Endpoint.URL.Path = path.Join("file", b.Endpoint.URL.Path)
 	u := b.Endpoint.BuildURL(MethodGetFile, "file_path", file.FilePath)
 

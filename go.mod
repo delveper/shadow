@@ -4,7 +4,12 @@ go 1.20
 
 require (
 	github.com/delveper/env v0.0.0-20230305065811-9386fe8ee2f2
-	github.com/hajimehoshi/vorbis v0.0.0-20161127202943-9581977ccb17
-	github.com/viert/go-lame v0.0.0-20201108052322-bb552596b11d
-	mccoy.space/g/ogg v0.0.0-20221103053400-1ea94e6f3152
+	github.com/faiface/beep v1.1.0
+	github.com/hraban/opus v0.0.0-20220302220929-eeacdbcb92d0
+)
+
+require (
+	github.com/jfreymuth/oggvorbis v1.0.1 // indirect
+	github.com/jfreymuth/vorbis v1.0.0 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 )
