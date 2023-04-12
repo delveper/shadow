@@ -80,7 +80,7 @@ type TranscriptionRequest struct {
 	ResponseFormat string `json:"response_format"`
 	Temperature    string `json:"temperature"`
 	Language       string `json:"language"`
-	file           *os.File
+	data           []byte
 }
 
 type TranscriptionResponse struct {
@@ -179,13 +179,13 @@ func (o *OpenAI) CreateCompletion(text string) (*ChatCompletionResponse, error) 
 	return &comp, nil
 }
 
-func newTranscriptionRequest(file *os.File) *TranscriptionRequest {
+func newTranscriptionRequest(data []byte) *TranscriptionRequest {
 	return &TranscriptionRequest{
-		File:     file.Name(),
+		File:     "audio.mp3",
 		Model:    ModelWhisper,
 		Promt:    os.Getenv("PROMT_TRANSCRIPTION"),
 		Language: DefaultLanguage,
-		file:     file,
+		data:     data,
 	}
 }
 
@@ -193,14 +193,12 @@ func newMultipartFormData(tr *TranscriptionRequest) (*bytes.Buffer, error) {
 	buf := new(bytes.Buffer)
 	w := multipart.NewWriter(buf)
 
-	defer func() { _, _ = tr.file.Close(), w.Close() }()
-
-	part, err := w.CreateFormFile("file", tr.file.Name())
+	part, err := w.CreateFormFile("file", tr.File)
 	if err != nil {
 		return nil, fmt.Errorf("creating form file: %w", err)
 	}
 
-	if _, err := io.Copy(part, tr.file); err != nil {
+	if _, err := io.Copy(part, bytes.NewReader(tr.data)); err != nil {
 		return nil, fmt.Errorf("copying file: %w", err)
 	}
 
@@ -227,8 +225,8 @@ func newMultipartFormData(tr *TranscriptionRequest) (*bytes.Buffer, error) {
 	return buf, nil
 }
 
-func (o *OpenAI) CreateTranscription(audio *os.File) (*TranscriptionResponse, error) {
-	task := newTranscriptionRequest(audio)
+func (o *OpenAI) CreateTranscription(data []byte) (*TranscriptionResponse, error) {
+	task := newTranscriptionRequest(data)
 
 	body, err := newMultipartFormData(task)
 	if err != nil {
