@@ -244,7 +244,7 @@ func (o *OpenAI) CreateTranscription(data []byte) (*TranscriptionResponse, error
 
 	req.Header.Set("Content-Type", "multipart/form-data")
 
-	log.Printf("Request: %+v\n", req)
+	log.Printf("Request: %+v\n", req.Body)
 
 	resp, err := o.Client.Do(req)
 	if err != nil {

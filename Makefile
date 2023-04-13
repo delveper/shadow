@@ -8,9 +8,6 @@ install-deps:
 run:
 	go run ./cmd/main.go
 
-run-audio:
-	go run ./cmd/audio/main.go
-
 # ngrok
 PUBLIC_URL := $(shell curl -s localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url')
 
@@ -29,13 +26,13 @@ server-expose:
 
 # telegram
 TELEGRAM_URL := https://api.telegram.org
-FILE_ID := AwACAgIAAxkBAAIB12Qw0IhsBC4ZfGPAqWSzLUG07eSnAAIQKQACaaCISc6XGNKAfPMvLwQ
+FILE_ID := AwACAgIAAxkBAAIB5GQ3mGUyRJpZUHwAAXzZCbs5CubfVgAC4ykAAt4quEnry0Kf4b5L8i8E
 telegram-setWebhook:
 	curl ${TELEGRAM_URL}/bot${TELEGRAM_TOKEN}/setWebhook?url=${PUBLIC_URL}
 
-telegram-getFile:
-	curl ${TELEGRAM_URL}/file/bot${TELEGRAM_TOKEN}/getFile?file_id=${FILE_ID} \
-	| jq -r '.result.file_path' \
+telegram-getFilePath:
+	curl ${TELEGRAM_URL}/bot${TELEGRAM_TOKEN}/getFile?file_id=${FILE_ID} \
+  | jq -r '.result.file_path'
 
 # OpenAI
 FILE_NAME := output.mp3

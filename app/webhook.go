@@ -40,9 +40,9 @@ func (w *Webhook) ServeHTTP(_ http.ResponseWriter, req *http.Request) {
 	msg := upd.Message.Text
 
 	if upd.Message.Voice != nil {
-		log.Printf("Voice message: %+v\n", upd.Message.Voice.FileID)
+		log.Printf("Voice message fi: %+v\n", upd.Message.Voice.FileID)
 
-		data, err := w.Telegram.GetVoice(upd.Message.Voice.FileID)
+		audio, err := w.Telegram.GetVoice(upd.Message.Voice.FileID)
 		if err != nil {
 			log.Printf("Failed getting voice: %v", err)
 			return
@@ -50,7 +50,7 @@ func (w *Webhook) ServeHTTP(_ http.ResponseWriter, req *http.Request) {
 
 		log.Println("Voice received.")
 
-		data, err = Convert(data)
+		audio, err = Convert(audio)
 		if err != nil {
 			log.Printf("Failed converting voice: %v", err)
 			return
@@ -58,7 +58,7 @@ func (w *Webhook) ServeHTTP(_ http.ResponseWriter, req *http.Request) {
 
 		log.Println("Voice converted.")
 
-		res, err := w.OpenAI.CreateTranscription(data)
+		res, err := w.OpenAI.CreateTranscription(audio)
 		if err != nil {
 			log.Println(err)
 			return

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -188,19 +189,25 @@ func (b *Telegram) GetVoice(id string) ([]byte, error) {
 		return nil, fmt.Errorf("getting file data: %w", err)
 	}
 
+	log.Printf("file %+v\n", file)
+
+	log.Printf("Downloading file_path: %v", file.FilePath)
+
 	audio, err := b.downloadFile(file)
 	if err != nil {
 		return nil, fmt.Errorf("getting file: %w", err)
 	}
-	if audio == nil {
+
+	if audio == nil || len(audio) == 0 {
 		return nil, fmt.Errorf("empty stream")
 	}
 
-	return nil, nil
+	log.Printf("File downloaded with size: %v", len(audio))
+
+	return audio, nil
 }
 
 func (b *Telegram) getFileData(id string) (*File, error) {
-	b.Endpoint.URL.Path = path.Join("file", b.Endpoint.URL.Path)
 	u := b.Endpoint.BuildURL(MethodGetFile, "file_id", id)
 
 	ctx := context.Background()
@@ -217,17 +224,25 @@ func (b *Telegram) getFileData(id string) (*File, error) {
 
 	defer func() { _ = resp.Body.Close() }()
 
-	var file File
+	var file struct {
+		Ok     bool  `json:"ok"`
+		Result *File `json:"result"`
+	}
+
 	if err := json.NewDecoder(resp.Body).Decode(&file); err != nil {
 		return nil, fmt.Errorf("decoding file: %w", err)
 	}
 
-	return &file, nil
+	if !file.Ok {
+		return nil, fmt.Errorf("unexpected status: %v", resp.Status)
+	}
+
+	return file.Result, nil
 }
 
 func (b *Telegram) downloadFile(file *File) ([]byte, error) {
-	b.Endpoint.URL.Path = path.Join("file", b.Endpoint.URL.Path)
-	u := b.Endpoint.BuildURL(MethodGetFile, "file_path", file.FilePath)
+	u := b.Endpoint.URL
+	u.Path = path.Join("file", b.Endpoint.URL.Path, file.FilePath)
 
 	ctx := context.Background()
 
@@ -249,7 +264,7 @@ func (b *Telegram) downloadFile(file *File) ([]byte, error) {
 
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("reading body: %w", err)
+		return nil, fmt.Errorf("eedaing body: %w", err)
 	}
 
 	return data, nil
