@@ -47,6 +47,7 @@ const (
 type ChatSession struct {
 	ID      string        `json:"id"`
 	History []ChatMessage `json:"history"`
+	Model   string        `json:"model"`
 	Date    time.Time     `json:"date"`
 }
 
@@ -114,13 +115,21 @@ func (cs *ChatSession) Start() {
 	*cs = ChatSession{
 		ID:      xid.New().String(),
 		Date:    time.Now(),
+		Model:   ModelGPT,
 		History: []ChatMessage{{Role: RoleSystem, Content: os.Getenv("SYSTEM_MESSAGE_TUTOR")}},
 	}
 }
 
-func NewChatMessage(role, content string) ChatMessage {
+func NewAssistantChatMessage(content string) ChatMessage {
 	return ChatMessage{
-		Role:    role,
+		Role:    RoleAssistant,
+		Content: content,
+	}
+}
+
+func NewUserChatMessage(content string) ChatMessage {
+	return ChatMessage{
+		Role:    RoleUser,
 		Content: content,
 	}
 }
@@ -161,20 +170,15 @@ func NewOpenAI() *OpenAI {
 	}
 }
 
-func newCompletionChatRequest(promt, text string) *ChatCompletionRequest {
-	accent := os.Getenv("PROMT_TUTOR_ACCENT")
-	task := ChatMessage{Role: RoleSystem, Content: promt}
-	cont := ChatMessage{Role: RoleUser, Content: accent + text}
-
+func newCompletionChatRequest(sess *ChatSession) *ChatCompletionRequest {
 	return &ChatCompletionRequest{
-		Model:    ModelGPT,
-		Messages: []ChatMessage{task, cont},
+		Model:    sess.Model,
+		Messages: sess.History,
 	}
 }
 
-func (o *OpenAI) CreateCompletion(text string) (*ChatCompletionResponse, error) {
-	promt := os.Getenv("PROMT_TUTOR")
-	task := newCompletionChatRequest(text, promt)
+func (o *OpenAI) CreateCompletion(sess *ChatSession) (*ChatCompletionResponse, error) {
+	task := newCompletionChatRequest(sess)
 
 	var body bytes.Buffer
 	if err := json.NewEncoder(&body).Encode(task); err != nil {
