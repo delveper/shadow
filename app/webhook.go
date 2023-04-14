@@ -9,6 +9,7 @@ import (
 type Webhook struct {
 	Telegram *Telegram
 	OpenAI   *OpenAI
+	Session  *ChatSession
 }
 
 func NewWebhook(bot *Telegram, gpt *OpenAI) *Webhook {
@@ -25,24 +26,29 @@ func (w *Webhook) ServeHTTP(_ http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	if upd.Message == nil || upd.ID == 0 {
+		log.Printf("Invalid update: %+v\n", upd)
+		return
+	}
+
 	log.Printf("Update: %+v\n", upd)
 
-	if upd.Message == nil {
-		log.Printf("Expected not nil message")
-		return
+	if entities := upd.Message.Entities; entities != nil && entities[0].IsCommand() {
+		w.Session.Start()
+		log.Printf("Starting new session.")
 	}
 
-	if upd.ID == 0 {
-		log.Printf("Invalid update: expected id != 0")
-		return
+	msg := NewChatMessage(RoleUser, upd.Message.Text)
+	if upd.Message.From.IsBot {
+		msg.Role = RoleAssistant
 	}
 
-	msg := upd.Message.Text
+	w.Session.AddMessage(msg)
 
-	if upd.Message.Voice != nil {
-		log.Printf("Voice message fi: %+v\n", upd.Message.Voice.FileID)
+	if voice := upd.Message.Voice; voice != nil {
+		log.Printf("Voice message fi: %+v\n", voice.FileID)
 
-		audio, err := w.Telegram.GetVoice(upd.Message.Voice.FileID)
+		audio, err := w.Telegram.GetVoice(voice.FileID)
 		if err != nil {
 			log.Printf("Failed getting voice: %v", err)
 			return
@@ -64,11 +70,11 @@ func (w *Webhook) ServeHTTP(_ http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		msg = res.Text
+		msg.Content = res.Text
+		log.Printf("Transcription: %s", msg)
 	}
 
-	comp, err := w.OpenAI.CreateCompletion(msg)
-
+	comp, err := w.OpenAI.CreateCompletion(msg.Content)
 	if err != nil {
 		log.Printf("Failed gettitg completion: %v", err)
 		return
@@ -78,6 +84,8 @@ func (w *Webhook) ServeHTTP(_ http.ResponseWriter, req *http.Request) {
 		log.Printf("Failed sending msg: %v", err)
 		return
 	}
+
+	w.Session.AddMessage(msg)
 
 	log.Println("Reply sent")
 }

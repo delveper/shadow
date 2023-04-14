@@ -34,6 +34,10 @@ const (
 	FormatMarkdownV2 = "MarkdownV2"
 )
 
+const (
+	TypeBotCommand = "bot_command"
+)
+
 // User https://core.telegram.org/bots/api#user
 type User struct {
 	ID           int    `json:"id"`
@@ -69,13 +73,24 @@ type File struct {
 
 // Message https://core.telegram.org/bots/api#message
 type Message struct {
-	ID    int    `json:"message_id"`
-	Text  string `json:"text,omitempty"`
-	From  *User  `json:"from"`
-	Chat  *Chat  `json:"chat"`
-	Audio *Audio `json:"audio,omitempty"`
-	Voice *Voice `json:"voice,omitempty"`
-	Date  int    `json:"date"`
+	ID       int             `json:"message_id"`
+	Text     string          `json:"text,omitempty"`
+	From     *User           `json:"from"`
+	Chat     *Chat           `json:"chat"`
+	Audio    *Audio          `json:"audio,omitempty"`
+	Voice    *Voice          `json:"voice,omitempty"`
+	Entities []MessageEntity `json:"entities,omitempty"`
+	Date     int             `json:"date"`
+}
+
+// MessageEntity https://core.telegram.org/bots/api#messageentity
+type MessageEntity struct {
+	Type     string `json:"type"`
+	Offset   int    `json:"offset"`
+	Length   int    `json:"length"`
+	URL      string `json:"url,omitempty"`
+	User     *User  `json:"user,omitempty"`
+	Language string `json:"language,omitempty"`
 }
 
 // Update https://core.telegram.org/bots/api#message
@@ -167,6 +182,8 @@ func (b *Telegram) SendMessage(chatID int, text string) error {
 		return fmt.Errorf("building request message: %w", err)
 	}
 
+	log.Println(req.URL.String())
+
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := b.Client.Do(req)
@@ -175,6 +192,8 @@ func (b *Telegram) SendMessage(chatID int, text string) error {
 	}
 
 	defer func() { _ = resp.Body.Close() }()
+
+	log.Printf("response: %#v", resp)
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("unexpected status: %v", resp.Status)
@@ -241,7 +260,7 @@ func (b *Telegram) getFileData(id string) (*File, error) {
 }
 
 func (b *Telegram) downloadFile(file *File) ([]byte, error) {
-	u := b.Endpoint.URL
+	u := *b.Endpoint.URL
 	u.Path = path.Join("file", b.Endpoint.URL.Path, file.FilePath)
 
 	ctx := context.Background()
@@ -268,4 +287,8 @@ func (b *Telegram) downloadFile(file *File) ([]byte, error) {
 	}
 
 	return data, nil
+}
+
+func (m *MessageEntity) IsCommand() bool {
+	return m.Type == TypeBotCommand
 }

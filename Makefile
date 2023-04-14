@@ -26,7 +26,7 @@ server-expose:
 
 # telegram
 TELEGRAM_URL := https://api.telegram.org
-FILE_ID := AwACAgIAAxkBAAIB5GQ3mGUyRJpZUHwAAXzZCbs5CubfVgAC4ykAAt4quEnry0Kf4b5L8i8E
+FILE_ID := AwACAgIAAxkBAAIB-mQ4I7v1YCE2CtTcnmLbn2PCLe4jAALQLwAC37DBSUw3lMewRL_oLwQ
 telegram-setWebhook:
 	curl ${TELEGRAM_URL}/bot${TELEGRAM_TOKEN}/setWebhook?url=${PUBLIC_URL}
 
@@ -35,7 +35,7 @@ telegram-getFilePath:
   | jq -r '.result.file_path'
 
 # OpenAI
-FILE_NAME := output.mp3
+FILE_NAME := tmp/voice.mp3
 
 openai-models:
 	curl -G https://api.openai.com/v1/models \

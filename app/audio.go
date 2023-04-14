@@ -6,12 +6,13 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path"
 )
 
 type TempFile struct{ *os.File }
 
 func NewTempFile(name string) (*TempFile, error) {
-	file, err := os.CreateTemp("tmp", name)
+	file, err := os.Create(path.Join("tmp", name))
 	if err != nil {
 		return nil, fmt.Errorf("creating temp file %q: %w", name, err)
 	}
@@ -78,8 +79,4 @@ func convertOGGtoMP3(inputPath string, outputPath string) error {
 	}
 
 	return nil
-}
-
-func ConvertOGGToPCM([]byte) ([]byte, error) {
-	return nil, nil
 }

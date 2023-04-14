@@ -6,12 +6,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"mime/multipart"
 	"net/http"
 	"net/url"
 	"os"
 	"path"
+	"time"
+
+	"github.com/rs/xid"
 )
 
 const DefaultLanguage = "en"
@@ -41,6 +43,12 @@ const (
 	RoleUser      = "user"
 	RoleAssistant = "assistant"
 )
+
+type ChatSession struct {
+	ID      string        `json:"id"`
+	History []ChatMessage `json:"history"`
+	Date    time.Time     `json:"date"`
+}
 
 type ChatMessage struct {
 	Role    string `json:"role"`
@@ -76,15 +84,21 @@ type ChatCompletionResponse struct {
 type TranscriptionRequest struct {
 	File           string `json:"file"`
 	Model          string `json:"model"`
-	Promt          string `json:"promt"`
-	ResponseFormat string `json:"response_format"`
-	Temperature    string `json:"temperature"`
-	Language       string `json:"language"`
+	Promt          string `json:"promt,omitempty"`
+	ResponseFormat string `json:"response_format,omitempty"`
+	Temperature    string `json:"temperature,omitempty"`
+	Language       string `json:"language,omitempty"`
 	data           []byte
 }
 
 type TranscriptionResponse struct {
-	Text string `json:"text"`
+	Text  string        `json:"text"`
+	Error ErrorResponse `json:"error"`
+}
+
+type ErrorResponse struct {
+	Message string `json:"message"`
+	Type    string `json:"type"`
 }
 
 type OpenAI struct {
@@ -96,9 +110,27 @@ type BearerTransport struct {
 	Token string
 }
 
+func (cs *ChatSession) Start() {
+	*cs = ChatSession{
+		ID:      xid.New().String(),
+		Date:    time.Now(),
+		History: []ChatMessage{{Role: RoleSystem, Content: os.Getenv("SYSTEM_MESSAGE_TUTOR")}},
+	}
+}
+
+func NewChatMessage(role, content string) ChatMessage {
+	return ChatMessage{
+		Role:    role,
+		Content: content,
+	}
+}
+
+func (cs *ChatSession) AddMessage(msg ChatMessage) {
+	cs.History = append(cs.History, msg)
+}
+
 func (bt *BearerTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	req.Header.Set("Authorization", "Bearer "+bt.Token)
-	req.Header.Set("Content-Type", "application/json")
 
 	trans := http.DefaultTransport
 
@@ -131,7 +163,7 @@ func NewOpenAI() *OpenAI {
 
 func newCompletionChatRequest(promt, text string) *ChatCompletionRequest {
 	accent := os.Getenv("PROMT_TUTOR_ACCENT")
-	task := ChatMessage{Role: RoleAssistant, Content: promt}
+	task := ChatMessage{Role: RoleSystem, Content: promt}
 	cont := ChatMessage{Role: RoleUser, Content: accent + text}
 
 	return &ChatCompletionRequest{
@@ -158,7 +190,7 @@ func (o *OpenAI) CreateCompletion(text string) (*ChatCompletionResponse, error) 
 		return nil, fmt.Errorf("building request: %w", err)
 	}
 
-	log.Printf("Request: %+v\n", req)
+	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := o.Client.Do(req)
 	if err != nil {
@@ -181,85 +213,70 @@ func (o *OpenAI) CreateCompletion(text string) (*ChatCompletionResponse, error) 
 
 func newTranscriptionRequest(data []byte) *TranscriptionRequest {
 	return &TranscriptionRequest{
-		File:     "audio.mp3",
+		File:     "tmp/voice.mp3",
 		Model:    ModelWhisper,
-		Promt:    os.Getenv("PROMT_TRANSCRIPTION"),
 		Language: DefaultLanguage,
 		data:     data,
 	}
 }
 
-func newMultipartFormData(tr *TranscriptionRequest) (*bytes.Buffer, error) {
-	buf := new(bytes.Buffer)
-	w := multipart.NewWriter(buf)
-
-	part, err := w.CreateFormFile("file", tr.File)
-	if err != nil {
-		return nil, fmt.Errorf("creating form file: %w", err)
-	}
-
-	if _, err := io.Copy(part, bytes.NewReader(tr.data)); err != nil {
-		return nil, fmt.Errorf("copying file: %w", err)
-	}
-
-	if err := w.WriteField("model", tr.Model); err != nil {
-		return nil, fmt.Errorf("writing model field: %w", err)
-	}
-
-	if err := w.WriteField("promt", tr.Promt); err != nil {
-		return nil, fmt.Errorf("writing promt field: %w", err)
-	}
-
-	if err := w.WriteField("response_format", tr.ResponseFormat); err != nil {
-		return nil, fmt.Errorf("writing response format field: %w", err)
-	}
-
-	if err := w.WriteField("temperature", tr.Temperature); err != nil {
-		return nil, fmt.Errorf("writing temperature field: %w", err)
-	}
-
-	if err := w.WriteField("language", tr.Language); err != nil {
-		return nil, fmt.Errorf("writing language field: %w", err)
-	}
-
-	return buf, nil
-}
-
 func (o *OpenAI) CreateTranscription(data []byte) (*TranscriptionResponse, error) {
-	task := newTranscriptionRequest(data)
-
-	body, err := newMultipartFormData(task)
-	if err != nil {
-		return nil, fmt.Errorf("creating multipart: %w", err)
-	}
-
 	u := o.Endpoint.BuildURL(MethodAudioTranscriptions)
 
 	ctx := context.Background()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u.String(), body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u.String(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("building request: %w", err)
 	}
 
-	req.Header.Set("Content-Type", "multipart/form-data")
+	task := newTranscriptionRequest(data)
 
-	log.Printf("Request: %+v\n", req.Body)
+	body := new(bytes.Buffer)
+	writer := multipart.NewWriter(body)
+
+	part, err := writer.CreateFormFile("file", task.File)
+	if err != nil {
+		return nil, fmt.Errorf("creating form file: %w", err)
+	}
+
+	buf := new(bytes.Buffer)
+	if _, err = io.Copy(buf, bytes.NewReader(task.data)); err != nil {
+		return nil, fmt.Errorf("copying file to the buffer: %w", err)
+	}
+
+	if _, err = io.Copy(part, buf); err != nil {
+		return nil, fmt.Errorf("copying file to the buffer: %w", err)
+	}
+
+	if err := writer.WriteField("model", task.Model); err != nil {
+		return nil, fmt.Errorf("writing model: %w", err)
+	}
+
+	if err := writer.WriteField("language", task.Language); err != nil {
+		return nil, fmt.Errorf("writing model: %w", err)
+	}
+
+	if err := writer.Close(); err != nil {
+		return nil, fmt.Errorf("closing writer: %w", err)
+	}
+
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Body = io.NopCloser(body)
 
 	resp, err := o.Client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("getting response: %w", err)
 	}
-
 	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("expecting ok, got: %d", resp.StatusCode)
-	}
 
 	var trans TranscriptionResponse
 	if err := json.NewDecoder(resp.Body).Decode(&trans); err != nil {
 		return nil, fmt.Errorf("decoding transcription: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("expecting ok, got: %d: %v", resp.StatusCode, trans.Error)
 	}
 
 	return &trans, nil
