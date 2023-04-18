@@ -8,6 +8,12 @@ install-deps:
 run:
 	go run ./cmd/main.go
 
+
+server-run: server-expose sleep telegram-setWebhook
+
+sleep:
+	sleep 5
+
 # ngrok
 PUBLIC_URL := $(shell curl -s localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url')
 
@@ -27,6 +33,7 @@ server-expose:
 # telegram
 TELEGRAM_URL := https://api.telegram.org
 FILE_ID := AwACAgIAAxkBAAIB-mQ4I7v1YCE2CtTcnmLbn2PCLe4jAALQLwAC37DBSUw3lMewRL_oLwQ
+
 telegram-setWebhook:
 	curl ${TELEGRAM_URL}/bot${TELEGRAM_TOKEN}/setWebhook?url=${PUBLIC_URL}
 

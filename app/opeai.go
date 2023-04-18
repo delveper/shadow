@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -113,29 +114,30 @@ type BearerTransport struct {
 
 func (cs *ChatSession) Start() {
 	*cs = ChatSession{
-		ID:      xid.New().String(),
-		Date:    time.Now(),
-		Model:   ModelGPT,
-		History: []ChatMessage{{Role: RoleSystem, Content: os.Getenv("SYSTEM_MESSAGE_TUTOR")}},
+		ID:    xid.New().String(),
+		Date:  time.Now(),
+		Model: ModelGPT,
+		History: []ChatMessage{
+			{Role: RoleSystem, Content: os.Getenv("SYSTEM_MESSAGE_TUTOR")},
+			{Role: RoleSystem, Content: os.Getenv("SYSTEM_MESSAGE_FORMAT")},
+		},
 	}
 }
 
-func NewAssistantChatMessage(content string) ChatMessage {
-	return ChatMessage{
-		Role:    RoleAssistant,
-		Content: content,
-	}
+func (cs *ChatSession) End() {
+	*cs = *new(ChatSession)
 }
 
-func NewUserChatMessage(content string) ChatMessage {
-	return ChatMessage{
-		Role:    RoleUser,
-		Content: content,
-	}
+func (cs *ChatSession) AddSystemMessage(cont string) {
+	cs.History = append(cs.History, ChatMessage{Role: RoleSystem, Content: cont})
 }
 
-func (cs *ChatSession) AddMessage(msg ChatMessage) {
-	cs.History = append(cs.History, msg)
+func (cs *ChatSession) AddUserMessage(cont string) {
+	cs.History = append(cs.History, ChatMessage{Role: RoleUser, Content: cont})
+}
+
+func (cs *ChatSession) AddBotMessage(cont string) {
+	cs.History = append(cs.History, ChatMessage{Role: RoleAssistant, Content: cont})
 }
 
 func (bt *BearerTransport) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -170,14 +172,14 @@ func NewOpenAI() *OpenAI {
 	}
 }
 
-func newCompletionChatRequest(sess *ChatSession) *ChatCompletionRequest {
+func newCompletionChatRequest(sess ChatSession) *ChatCompletionRequest {
 	return &ChatCompletionRequest{
 		Model:    sess.Model,
 		Messages: sess.History,
 	}
 }
 
-func (o *OpenAI) CreateCompletion(sess *ChatSession) (*ChatCompletionResponse, error) {
+func (o *OpenAI) CreateCompletion(sess ChatSession) (*ChatCompletionResponse, error) {
 	task := newCompletionChatRequest(sess)
 
 	var body bytes.Buffer
@@ -195,6 +197,8 @@ func (o *OpenAI) CreateCompletion(sess *ChatSession) (*ChatCompletionResponse, e
 	}
 
 	req.Header.Set("Content-Type", "application/json")
+
+	log.Printf("COMPLETION REQUEST: %s\n", req.URL.String())
 
 	resp, err := o.Client.Do(req)
 	if err != nil {
@@ -267,6 +271,8 @@ func (o *OpenAI) CreateTranscription(data []byte) (*TranscriptionResponse, error
 
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	req.Body = io.NopCloser(body)
+
+	log.Printf("TRANSCRIPTION REQUEST: %s\n", req.URL.String())
 
 	resp, err := o.Client.Do(req)
 	if err != nil {

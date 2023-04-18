@@ -71,7 +71,7 @@ func Convert(input []byte) ([]byte, error) {
 }
 
 func convertOGGtoMP3(inputPath string, outputPath string) error {
-	cmd := exec.Command("ffmpeg", "-i", inputPath, "-vn", "-ar", "48000", "-ac", "1", "-ab", "36k", "-f", "mp3", outputPath, "-y")
+	cmd := exec.Command("ffmpeg", "-i", inputPath, "-vn", "-ar", "48000", "-ac", "1", "-ab", "36k", "-f", "mp3", "-y", "-loglevel", "quiet", outputPath)
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {

@@ -1,6 +1,8 @@
 package app
 
-import "net/url"
+import (
+	"net/url"
+)
 
 const DefaultSchema = "https"
 
@@ -9,13 +11,13 @@ type Endpoint struct {
 	Values url.Values
 }
 
-func (e *Endpoint) BuildURL(method string, args ...string) *url.URL {
-	for i := 0; i < len(args); i += 2 {
-		k, v := args[i], args[i+1]
+func (e Endpoint) BuildURL(path string, params ...string) *url.URL {
+	for i := 0; i < len(params); i += 2 {
+		k, v := params[i], params[i+1]
 		e.Values.Add(k, v)
 	}
 
-	u := *e.URL.JoinPath(method)
+	u := *e.URL.JoinPath(path)
 	u.RawQuery = e.Values.Encode()
 
 	return &u

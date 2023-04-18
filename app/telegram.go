@@ -56,9 +56,12 @@ type Chat struct {
 
 // Audio https://core.telegram.org/bots/api#audio
 type Audio struct {
-	FileID   string `json:"file_id"`
-	FileName string `json:"file_name"`
-	Duration int    `json:"duration"`
+	FileID       string `json:"file_id"`
+	FileUniqueID string `json:"file_unique_id"`
+	FileName     string `json:"file_name"`
+	MimeType     string `json:"mime_type"`
+	Duration     int    `json:"duration"`
+	FileSize     int    `json:"file_siz"`
 }
 
 type Voice Audio
@@ -137,7 +140,7 @@ func NewTelegram() *Telegram {
 }
 
 func (b *Telegram) GetUpdate(offset int) (*Update, error) {
-	u := b.Endpoint.BuildURL(MethodGetUpdates, "offset", strconv.Itoa(offset))
+	u := *b.Endpoint.BuildURL(MethodGetUpdates, "offset", strconv.Itoa(offset))
 
 	ctx := context.Background()
 
@@ -145,6 +148,7 @@ func (b *Telegram) GetUpdate(offset int) (*Update, error) {
 	if err != nil {
 		return nil, fmt.Errorf("building request update: %w", err)
 	}
+	log.Printf("UDPATEREQUEST: %s\n", req.URL.String())
 
 	resp, err := b.Client.Do(req)
 	if err != nil {
@@ -185,6 +189,8 @@ func (b *Telegram) SendMessage(chatID int, text string) error {
 	log.Println(req.URL.String())
 
 	req.Header.Set("Content-Type", "application/json")
+
+	log.Printf("SEND MESSAGE REQUEST: %s\n", req.URL.String())
 
 	resp, err := b.Client.Do(req)
 	if err != nil {
@@ -235,6 +241,7 @@ func (b *Telegram) getFileData(id string) (*File, error) {
 	if err != nil {
 		return nil, fmt.Errorf("building request file: %w", err)
 	}
+	log.Printf("FILE DATA REQUEST: %s\n", req.URL.String())
 
 	resp, err := b.Client.Do(req)
 	if err != nil {
@@ -261,7 +268,7 @@ func (b *Telegram) getFileData(id string) (*File, error) {
 
 func (b *Telegram) downloadFile(file *File) ([]byte, error) {
 	u := *b.Endpoint.URL
-	u.Path = path.Join("file", b.Endpoint.URL.Path, file.FilePath)
+	u.Path = path.Join("file", u.Path, file.FilePath)
 
 	ctx := context.Background()
 
@@ -269,6 +276,7 @@ func (b *Telegram) downloadFile(file *File) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("building request file: %w", err)
 	}
+	log.Printf("DOWNLOAD REQUEST: %s\n", req.URL.String())
 
 	resp, err := b.Client.Do(req)
 	if err != nil {
@@ -290,5 +298,6 @@ func (b *Telegram) downloadFile(file *File) ([]byte, error) {
 }
 
 func (m *MessageEntity) IsCommand() bool {
+	log.Printf("TYPE: %v\n", m.Type)
 	return m.Type == TypeBotCommand
 }

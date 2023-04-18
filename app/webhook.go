@@ -9,7 +9,7 @@ import (
 type Webhook struct {
 	Telegram *Telegram
 	OpenAI   *OpenAI
-	Session  *ChatSession
+	Session  ChatSession
 }
 
 func NewWebhook(bot *Telegram, gpt *OpenAI) *Webhook {
@@ -21,32 +21,54 @@ func NewWebhook(bot *Telegram, gpt *OpenAI) *Webhook {
 
 func (w *Webhook) ServeHTTP(_ http.ResponseWriter, req *http.Request) {
 	var upd Update
-	{
-		if err := json.NewDecoder(req.Body).Decode(&upd); err != nil {
-			log.Printf("Could not encode update: %v", err)
+	if err := json.NewDecoder(req.Body).Decode(&upd); err != nil {
+		log.Printf("Could not encode update: %v", err)
+		return
+	}
+
+	if upd.Message == nil || upd.ID == 0 {
+		log.Printf("Invalid update: %+v\n", upd)
+		return
+	}
+
+	log.Printf("UPDATE: %+v\n", upd)
+
+	msg := upd.Message.Text
+
+	if upd.Message.From.IsBot {
+		log.Println("Passing message from bot")
+	}
+
+	log.Printf("MesageEntities: %#v\n", upd.Message.Entities)
+	if ent := upd.Message.Entities; ent != nil && ent[0].IsCommand() {
+		switch upd.Message.Text {
+		case "/start":
+			w.Session.Start()
+			log.Println("Starting new session.")
+
+		case "/end":
+			w.Session.End()
+			msg = "Finishing session."
+			log.Println(msg)
+
+			if err := w.Telegram.SendMessage(upd.Message.Chat.ID, msg); err != nil {
+				log.Printf("Failed sending msg: %v", err)
+			}
 			return
-		}
 
-		if upd.Message == nil || upd.ID == 0 {
-			log.Printf("Invalid update: %+v\n", upd)
-			return
-		}
-
-		log.Printf("Update: %+v\n", upd)
-
-		if upd.Message.From.IsBot {
-			log.Printf("Passing message from bot")
+		default:
+			log.Printf("Unknown command.")
 			return
 		}
 	}
 
-	if entities := upd.Message.Entities; entities != nil && entities[0].IsCommand() {
+	if w.Session.History == nil {
 		w.Session.Start()
 		log.Printf("Starting new session.")
 	}
 
-	if voice := upd.Message.Voice; voice != nil {
-		log.Printf("Voice message fi: %+v\n", voice.FileID)
+	if voice := upd.Message.Voice; voice != nil && voice.MimeType == "audio/ogg" {
+		log.Printf("Voice message ID: %+v\n", voice.FileID)
 
 		audio, err := w.Telegram.GetVoice(voice.FileID)
 		if err != nil {
@@ -70,27 +92,29 @@ func (w *Webhook) ServeHTTP(_ http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		msg := NewUserChatMessage(res.Text)
-		w.Session.AddMessage(msg)
-
-		log.Printf("Transcription: %s", msg)
+		msg = res.Text
+		log.Printf("Transcription: %+v\n", msg)
 	}
 
-	{
-		comp, err := w.OpenAI.CreateCompletion(w.Session)
-		if err != nil {
-			log.Printf("Failed gettitg completion: %v", err)
-			return
-		}
-
-		msg := NewAssistantChatMessage(comp.Choices[0].Message.Content)
-		w.Session.AddMessage(msg)
-
-		if err := w.Telegram.SendMessage(upd.Message.Chat.ID, msg.Content); err != nil {
-			log.Printf("Failed sending msg: %v", err)
-			return
-		}
-
-		log.Println("Reply sent")
+	if msg == "" {
+		log.Println("Empty promt message.")
+		return
 	}
+
+	w.Session.AddUserMessage(msg)
+
+	comp, err := w.OpenAI.CreateCompletion(w.Session)
+	if err != nil {
+		log.Printf("Failed gettitg completion: %v", err)
+		return
+	}
+
+	w.Session.AddBotMessage(comp.Choices[0].Message.Content)
+
+	if err := w.Telegram.SendMessage(upd.Message.Chat.ID, comp.Choices[0].Message.Content); err != nil {
+		log.Printf("Failed sending msg: %v", err)
+		return
+	}
+
+	log.Println("Reply sent")
 }
