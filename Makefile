@@ -1,21 +1,20 @@
 include .env
 export
 
-install-deps:
-	sudo apt-get install -y jq \
-	sudo apt-get install -y ffmpeg
-
 run:
 	go run ./cmd/main.go
 
-
-server-run: server-expose sleep telegram-setWebhook
+wait:
+	wait fg
 
 sleep:
-	sleep 5
+	sleep 15
 
-# ngrok
-PUBLIC_URL := $(shell curl -s localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url')
+dev-install-dep:
+	sudo apt-get install -y jq \
+	sudo apt-get install -y ffmpeg
+
+server-run: server-expose sleep telegram-setWebhook wait
 
 server-install:
 	curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc \
@@ -28,14 +27,14 @@ server-config:
 	ngrok config add-authtoken ${NGROK_TOKEN}
 
 server-expose:
-	ngrok http ${PORT}
+	ngrok http ${PORT} &
 
 # telegram
 TELEGRAM_URL := https://api.telegram.org
 FILE_ID := AwACAgIAAxkBAAIB-mQ4I7v1YCE2CtTcnmLbn2PCLe4jAALQLwAC37DBSUw3lMewRL_oLwQ
 
 telegram-setWebhook:
-	curl ${TELEGRAM_URL}/bot${TELEGRAM_TOKEN}/setWebhook?url=${PUBLIC_URL}
+	curl ${TELEGRAM_URL}/bot${TELEGRAM_TOKEN}/setWebhook?url=$(shell curl -s localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url') &
 
 telegram-getFilePath:
 	curl ${TELEGRAM_URL}/bot${TELEGRAM_TOKEN}/getFile?file_id=${FILE_ID} \

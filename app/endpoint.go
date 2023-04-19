@@ -7,18 +7,18 @@ import (
 const DefaultSchema = "https"
 
 type Endpoint struct {
-	URL    *url.URL
-	Values url.Values
+	URL *url.URL
 }
 
 func (e Endpoint) BuildURL(path string, params ...string) *url.URL {
+	values := make(url.Values)
 	for i := 0; i < len(params); i += 2 {
 		k, v := params[i], params[i+1]
-		e.Values.Add(k, v)
+		values.Add(k, v)
 	}
 
 	u := *e.URL.JoinPath(path)
-	u.RawQuery = e.Values.Encode()
+	u.RawQuery = values.Encode()
 
 	return &u
 }

@@ -106,7 +106,7 @@ type Update struct {
 type SendMessage struct {
 	ChatID    int    `json:"chat_id"`
 	Text      string `json:"text"`
-	ParseMode string `json:"parse_mode,omitempty"`
+	ParseMode string `json:"parse_mode"`
 }
 
 // SendVoice https://core.telegram.org/bots/api#sendvoice
@@ -130,7 +130,6 @@ func NewTelegram() *Telegram {
 			Host:   apiTelegramHost,
 			Path:   apiTelegramPath + token,
 		},
-		Values: make(url.Values),
 	}
 
 	return &Telegram{
