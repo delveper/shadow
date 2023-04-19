@@ -18,10 +18,6 @@ import (
 	"github.com/rs/xid"
 )
 
-//go:embed .style
-var style []byte
-var formatStyle = string(style)
-
 const DefaultLanguage = "en"
 
 const (
@@ -118,15 +114,13 @@ type BearerTransport struct {
 }
 
 func (cs *ChatSession) Start() {
-	log.Println(formatStyle)
 	*cs = ChatSession{
 		ID:    xid.New().String(),
 		Date:  time.Now(),
 		Model: ModelGPT,
 		History: []ChatMessage{
-			{Role: RoleSystem, Content: formatStyle},
-			{Role: RoleSystem, Content: os.Getenv("SYSTEM_MESSAGE_FORMAT")},
 			{Role: RoleSystem, Content: os.Getenv("SYSTEM_MESSAGE_TUTOR")},
+			{Role: RoleSystem, Content: os.Getenv("SYSTEM_MESSAGE_FORMAT")},
 		},
 	}
 }

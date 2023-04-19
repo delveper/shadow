@@ -168,7 +168,7 @@ func (b *Telegram) SendMessage(chatID int, text string) error {
 	msg := SendMessage{
 		ChatID:    chatID,
 		Text:      text,
-		ParseMode: FormatHTML,
+		ParseMode: FormatMarkdown,
 	}
 
 	var body bytes.Buffer
