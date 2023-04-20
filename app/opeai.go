@@ -114,13 +114,13 @@ type BearerTransport struct {
 }
 
 func (cs *ChatSession) Start() {
+	task := os.Getenv("SYSTEM_MESSAGE_TUTOR") + os.Getenv("SYSTEM_MESSAGE_FORMAT")
 	*cs = ChatSession{
 		ID:    xid.New().String(),
 		Date:  time.Now(),
 		Model: ModelGPT,
 		History: []ChatMessage{
-			{Role: RoleSystem, Content: os.Getenv("SYSTEM_MESSAGE_TUTOR")},
-			{Role: RoleSystem, Content: os.Getenv("SYSTEM_MESSAGE_FORMAT")},
+			{Role: RoleSystem, Content: task},
 		},
 	}
 }
