@@ -1,8 +1,7 @@
-# Telegram Speech-to-Text Bot
+# Speech-to-Text Chat Assistant
 
+## Used resources:
 
-## Useful materials
-
-- [Build a Telegram Bot in Go in 9 minutes](https://medium.com/swlh/build-a-telegram-bot-in-go-in-9-minutes-e06ad38acef1)
-- [Making an interactive Telegram bot in Go (Golang)](https://www.sohamkamani.com/golang/telegram-bot/)
-- [Speech to Text](https://platform.openai.com/docs/guides/speech-to-text)
+- [Telegram Bot API](https://core.telegram.org/bots/api)
+- [OpenAI Speech to Text](https://platform.openai.com/docs/guides/speech-to-text)
+- [OpenAI Chat completion](https://platform.openai.com/docs/guides/chat)

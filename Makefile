@@ -1,7 +1,7 @@
 include .env
 export
 
-all: server-expose sleep telegram-setWebhook wait run
+all: server-expose sleep tel-setWebhook wait run
 
 run:
 	go run ./cmd/main.go
@@ -33,10 +33,13 @@ server-expose:
 TELEGRAM_URL := https://api.telegram.org
 FILE_ID := AwACAgIAAxkBAAIB-mQ4I7v1YCE2CtTcnmLbn2PCLe4jAALQLwAC37DBSUw3lMewRL_oLwQ
 
-telegram-setWebhook:
+tel-getUpdates:
+	curl ${TELEGRAM_URL}/bot${TELEGRAM_TOKEN}/getUpdates | jq
+
+tel-setWebhook:
 	curl ${TELEGRAM_URL}/bot${TELEGRAM_TOKEN}/setWebhook?url=$(shell curl -s localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url')
 
-telegram-getFilePath:
+tel-getFilePath:
 	curl ${TELEGRAM_URL}/bot${TELEGRAM_TOKEN}/getFile?file_id=${FILE_ID} \
   | jq -r '.result.file_path'
 

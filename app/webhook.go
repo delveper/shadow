@@ -31,7 +31,7 @@ func (w *Webhook) ServeHTTP(_ http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	log.Printf("UPDATE: %+v\n", upd)
+	log.Printf("Update: %+v\n", upd)
 
 	msg := upd.Message.Text
 
@@ -94,6 +94,12 @@ func (w *Webhook) ServeHTTP(_ http.ResponseWriter, req *http.Request) {
 
 		msg = res.Text
 		log.Printf("Transcription: %+v\n", msg)
+
+		quote := "```" + msg + "```"
+		if err := w.Telegram.SendMessage(upd.Message.Chat.ID, quote); err != nil {
+			log.Printf("Failed sending transcipted message: %v", err)
+			return
+		}
 	}
 
 	if msg == "" {
