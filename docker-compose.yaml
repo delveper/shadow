@@ -1,0 +1,17 @@
+version: "3.9"
+
+services:
+  ngrok:
+    image: ngrok/ngrok:latest
+    restart: unless-stopped
+    env_file:
+      - .env
+    command:
+      - "start"
+      - "--all"
+      - "--config"
+      - "/etc/ngrok.yml"
+    volumes:
+      - ./ngrok.yml:/etc/ngrok.yml
+    ports:
+      - "4040:4040"

@@ -1,9 +1,14 @@
-FROM golang:1.20.3-alpine3.17 as builder
+FROM golang:1.20.3-alpine3.17 as build
 
+RUN mkdir /app
+ADD . /app
 WORKDIR /app
 
-COPY . /app
+RUN scripts/setup.sh
+RUN  CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o myapp ./cmd/main.go
 
-RUN go build -o myapp .
+FROM alpine:3.17 as prod
 
-CMD ["./app/myapp"]
+COPY --from=build /app .
+
+ENTRYPOINT ["./app/myapp"]

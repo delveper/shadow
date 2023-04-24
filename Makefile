@@ -12,10 +12,11 @@ wait:
 sleep:
 	sleep 15
 
-dev-install-dep:
+dev-setup-local:
 	sudo apt-get install -y jq \
 	sudo apt-get install -y ffmpeg
 
+#################################################################################################################################################
 server-install:
 	curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc \
 	| sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null \
@@ -24,11 +25,12 @@ server-install:
 	&& sudo apt update && sudo apt install ngrok
 
 server-config:
-	ngrok config add-authtoken ${NGROK_TOKEN}
+	ngrok config add-authtoken ${NGROK_AUTHTOKEN}
 
 server-expose:
 	ngrok http ${PORT} &
 
+#################################################################################################################################################
 # telegram
 TELEGRAM_URL := https://api.telegram.org
 FILE_ID := AwACAgIAAxkBAAIB-mQ4I7v1YCE2CtTcnmLbn2PCLe4jAALQLwAC37DBSUw3lMewRL_oLwQ
@@ -43,6 +45,14 @@ tel-getFilePath:
 	curl ${TELEGRAM_URL}/bot${TELEGRAM_TOKEN}/getFile?file_id=${FILE_ID} \
   | jq -r '.result.file_path'
 
+
+#################################################################################################################################################
+# Docker
+
+build:
+	docker build --build-arg NGROK_TOKEN=$(NGROK_TOKEN) --build-arg PORT=$(PORT) .
+
+#################################################################################################################################################
 # OpenAI
 FILE_NAME := tmp/voice.mp3
 

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 )
 
 type Webhook struct {
@@ -107,6 +108,7 @@ func (w *Webhook) ServeHTTP(_ http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	w.Session.AddSystemMessage(os.Getenv("SYSTEM_MESSAGE_FORMAT"))
 	w.Session.AddUserMessage(msg)
 
 	comp, err := w.OpenAI.CreateCompletion(w.Session)

@@ -198,7 +198,7 @@ func (o *OpenAI) CreateCompletion(sess ChatSession) (*ChatCompletionResponse, er
 
 	req.Header.Set("Content-Type", "application/json")
 
-	log.Printf("COMPLETION REQUEST: %s\n", req.URL.String())
+	log.Printf("Completion request: %s\n", req.URL.String())
 
 	resp, err := o.Client.Do(req)
 	if err != nil {
@@ -272,7 +272,7 @@ func (o *OpenAI) CreateTranscription(data []byte) (*TranscriptionResponse, error
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	req.Body = io.NopCloser(body)
 
-	log.Printf("TRANSCRIPTION REQUEST: %s\n", req.URL.String())
+	log.Printf("Transcription request: %s\n", req.URL.String())
 
 	resp, err := o.Client.Do(req)
 	if err != nil {

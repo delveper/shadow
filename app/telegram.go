@@ -61,7 +61,7 @@ type Audio struct {
 	FileName     string `json:"file_name"`
 	MimeType     string `json:"mime_type"`
 	Duration     int    `json:"duration"`
-	FileSize     int    `json:"file_siz"`
+	FileSize     int    `json:"file_size"`
 }
 
 type Voice Audio
@@ -138,6 +138,11 @@ func NewTelegram() *Telegram {
 	}
 }
 
+func (m *MessageEntity) IsCommand() bool {
+	log.Printf("TYPE: %v\n", m.Type)
+	return m.Type == TypeBotCommand
+}
+
 func (b *Telegram) GetUpdate(offset int) (*Update, error) {
 	u := *b.Endpoint.BuildURL(MethodGetUpdates, "offset", strconv.Itoa(offset))
 
@@ -147,7 +152,7 @@ func (b *Telegram) GetUpdate(offset int) (*Update, error) {
 	if err != nil {
 		return nil, fmt.Errorf("building request update: %w", err)
 	}
-	log.Printf("UDPATEREQUEST: %s\n", req.URL.String())
+	log.Printf("Udpate request: %s\n", req.URL.String())
 
 	resp, err := b.Client.Do(req)
 	if err != nil {
@@ -189,7 +194,7 @@ func (b *Telegram) SendMessage(chatID int, text string) error {
 
 	req.Header.Set("Content-Type", "application/json")
 
-	log.Printf("SEND MESSAGE REQUEST: %s\n", req.URL.String())
+	log.Printf("Send message request: %s\n", req.URL.String())
 
 	resp, err := b.Client.Do(req)
 	if err != nil {
@@ -240,7 +245,7 @@ func (b *Telegram) getFileData(id string) (*File, error) {
 	if err != nil {
 		return nil, fmt.Errorf("building request file: %w", err)
 	}
-	log.Printf("FILE DATA REQUEST: %s\n", req.URL.String())
+	log.Printf("File data request: %s\n", req.URL.String())
 
 	resp, err := b.Client.Do(req)
 	if err != nil {
@@ -275,7 +280,7 @@ func (b *Telegram) downloadFile(file *File) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("building request file: %w", err)
 	}
-	log.Printf("DOWNLOAD REQUEST: %s\n", req.URL.String())
+	log.Printf("Download request: %s\n", req.URL.String())
 
 	resp, err := b.Client.Do(req)
 	if err != nil {
@@ -290,13 +295,8 @@ func (b *Telegram) downloadFile(file *File) ([]byte, error) {
 
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("eedaing body: %w", err)
+		return nil, fmt.Errorf("redaing body: %w", err)
 	}
 
 	return data, nil
-}
-
-func (m *MessageEntity) IsCommand() bool {
-	log.Printf("TYPE: %v\n", m.Type)
-	return m.Type == TypeBotCommand
 }

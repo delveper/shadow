@@ -6,9 +6,7 @@ import (
 
 const DefaultSchema = "https"
 
-type Endpoint struct {
-	URL *url.URL
-}
+type Endpoint struct{ URL *url.URL }
 
 func (e Endpoint) BuildURL(path string, params ...string) *url.URL {
 	values := make(url.Values)
